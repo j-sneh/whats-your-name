@@ -6,7 +6,7 @@ import database
 import json
 import postprocessing.text_to_speech as tts
 
-def preprocess_video(video_path):
+def preprocess_video(video_path, audio_path):
     """
     Preprocesses the video file to extract audio context and face embeddings.
     
@@ -26,7 +26,7 @@ def preprocess_video(video_path):
         raise FileNotFoundError(f"Video file not found at {video_path}")
     
     # Step 1: Extract audio information (name and context)
-    tkt = process_video(video_path=video_path)
+    tkt = process_video(video_path=video_path, audio_path=audio_path)
     json_data = json.loads(tts.extract_info_claude(tkt))
     # print(json_data)
     name = json_data["name"]

@@ -66,13 +66,13 @@ def merge_audio_video(video_file, audio_file, output_file):
     except Exception as e:
         print(f"❌ Error merging audio and video: {e}")
 
-def process_video_chunk(chunk_path):
+def process_chunks(audio_path, video_path):
     """
     Process a merged video chunk: run the preprocessing pipeline and update the database.
     If a similar face is found, update the summary and generate an audio summary.
     Otherwise, insert a new record.
     """
-    info = preprocessing_pipeline.preprocess_video(chunk_path)
+    info = preprocessing_pipeline.preprocess_video(video_path, audio_path)
     name = info.get("name", "Unknown")
     context = info.get("context", "")
     face_embedding = info.get("face_embedding", None)
@@ -159,11 +159,11 @@ def record_and_process_loop():
             print(f"🔄 Recorded video chunk saved: {chunk_video_path}")
 
             # Merge video and audio into one file
-            merged_chunk_path = f"merged_chunk_{int(time.time())}.mp4"
-            merge_audio_video(chunk_video_path, chunk_audio_path, merged_chunk_path)
+            # merged_chunk_path = f"merged_chunk_{int(time.time())}.mp4"
+            # merge_audio_video(chunk_video_path, chunk_audio_path, merged_chunk_path)
 
             # Process the merged video chunk in a separate thread
-            threading.Thread(target=process_video_chunk, args=(merged_chunk_path,), daemon=True).start()
+            threading.Thread(target=process_chunks, args=(chunk_audio_path, chunk_video_path), daemon=True).start()
 
             # Reset for the next chunk: update timer, clear frames,
             # and start a new audio recording thread concurrently.

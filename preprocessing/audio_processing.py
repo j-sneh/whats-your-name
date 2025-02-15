@@ -101,7 +101,7 @@ def diarize_audio(audio_path):
 
     return speaker_segments
 
-def process_video(video_path, use_diarization=False):
+def process_video(video_path, audio_path, use_diarization=False):
     """
     Processes a video file: extracts audio, transcribes speech, and optionally applies speaker diarization.
 
@@ -112,7 +112,7 @@ def process_video(video_path, use_diarization=False):
     Returns:
         list: Structured transcription (and diarization) results.
     """
-    audio_path = extract_audio(video_path)
+    audio_path = audio_path
     audio_chunks = split_audio(audio_path)
 
     results = []
@@ -148,7 +148,7 @@ if __name__ == "__main__":
     video_file = "data/test_video1.MOV"
     
     # Process video with diarization (set use_diarization=False to skip diarization)
-    output = process_video(video_file, use_diarization=False)
+    output = process_video(video_file, audio_file, use_diarization=False)
 
     # Save results to JSON
     with open("transcription.json", "w") as f:
