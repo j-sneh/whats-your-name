@@ -42,40 +42,25 @@ class InMemoryDatabase(AbstractDatabase):
         key = tuple(np.round(face_vector, 4))
         if key in self.db:
             del self.db[key]
-
-    def extract_data_from_face_embedding(self, embedding, threshold=0.6):
-        """
-        Searches for the closest face embedding using cosine similarity.
-
-        Args:
-            embedding (numpy.array): The face embedding vector to search for.
-            threshold (float): Minimum cosine similarity threshold for a match.
-
-        Returns:
-            dict or None: The matching entry from the database, or None if no match is found.
-        """
+        
+def extract_data_from_face_embedding(self, embedding, threshold=0.6):
         if not self.db:
-            return None  # Return None if database is empty
+            return None
 
-        embedding = np.array(embedding).reshape(1, -1)  # Ensure it's a 2D array
-        keys = np.array([np.array(k) for k in self.db.keys()])  # Convert stored keys back to numpy arrays
+        embedding = np.array(embedding).reshape(1, -1)[0]  # make it a 1D vector for the custom function
+        keys = [np.array(k) for k in self.db.keys()]
 
+        # Compute cosine similarities for each stored key
+        similarities = np.array([cosine_similarity(key, embedding) for key in keys])
 
-        print(keys)
-        print(embedding)
-        # Compute cosine similarities
-        similarities = cosine_similarity(keys, embedding).flatten()
-
-        # Find best match
         best_index = np.argmax(similarities)
         best_score = similarities[best_index]
 
         if best_score >= threshold:
-            best_match_key = tuple(keys[best_index])  # Convert back to tuple for retrieval
+            best_match_key = tuple(np.round(keys[best_index], 4))
             return self.retrieve(best_match_key)
 
-        return None  # No match found
-
+        return None
 
 
 def cosine_similarity(embedding1, embedding2):
