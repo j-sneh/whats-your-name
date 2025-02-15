@@ -38,7 +38,7 @@ db = InMemoryDatabase()
 SIMILARITY_THRESHOLD = 0.5
 
 # Video chunk duration in seconds
-CHUNK_DURATION = 5
+CHUNK_DURATION = 15
 
 def process_video_chunk(chunk_path):
     """
