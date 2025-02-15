@@ -10,7 +10,6 @@ import wave
 from google.cloud import aiplatform, storage, speech
 import contextlib
 import anthropic
-
 PATH = ""
 # ------------------------------
 # CONFIGURATION & FILE PATHS
@@ -207,16 +206,26 @@ if __name__ == '__main__':
 
 # == VIDEO TO TEXT -- NEED GOOGLE CLOUD API
 
-def transcribe_video_speech(video_uri) -> str:
-    client = speech.SpeechClient(client_options={"api_key": GOOGLE_CLOUD_API_KEY})
-    
+def transcribe_speech(speech_uri) -> str:
+    # If you're using ADC, no need to pass client_options
+    client = speech.SpeechClient()
+
+    diarization_config = speech.SpeakerDiarizationConfig(
+        enable_speaker_diarization=True,
+        min_speaker_count=2,
+        max_speaker_count=2,
+    )
+
     config = speech.RecognitionConfig(
         encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
         sample_rate_hertz=16000,
-        language_code="en-US"
+        language_code="en-US",
+        model="phone_call",
+        diarization_config=diarization_config,
     )
+
     
-    audio = speech.RecognitionAudio(uri=video_uri)
+    audio = speech.RecognitionAudio(uri=speech_uri)
     
     response = client.recognize(config=config, audio=audio)
     
@@ -225,22 +234,22 @@ def transcribe_video_speech(video_uri) -> str:
     return transcript
 
 
-
-
 client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
 
 
 def extract_info_claude(transcript):
     prompt = f"""
-    You are a professional conversationalist, and you are very good at making summaries.
-    Extract the following information from the speech transcript:
+    You are a professional conversationalist, and you are very good at making summaries. 
+    You will be given a transcription between speaker 1 and speaker 2. The first to say they are face-blind is the user.
+    Extract the following information from the speaker that is not face blind.
+    
     - Name:
     - Other Infos:
 
     Transcript:
     {transcript}
-    The 'Other Infos' part should contain a short summary of the conversation.
+    The 'Other Infos' part should contain at most 5 short bullet points 
     Provide the response in this JSON format:
     {{
         "name": "Extracted Name",
