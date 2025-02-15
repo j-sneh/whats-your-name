@@ -1,14 +1,14 @@
-import os
-import subprocess
-import cv2
-import face_recognition
-import sqlite3
-import pyttsx3
-import ffmpeg  # requires ffmpeg-python
-import wave
-from google.cloud import aiplatform, storage, speech
-import contextlib
-import anthropic
+# import os
+# import subprocess
+# import cv2
+# import face_recognition
+# import sqlite3
+# import pyttsx3
+# import ffmpeg  # requires ffmpeg-python
+# import wave
+from google.cloud import speech #, aiplatform, storage
+# import contextlib
+# import anthropic
 
 # == VIDEO TO TEXT -- NEED GOOGLE CLOUD API
 
