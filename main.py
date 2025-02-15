@@ -1,48 +1,74 @@
 #!/usr/bin/env python
 import cv2
-# import speech_recognition as sr
-# import ffmpeg  # requires ffmpeg-python
-# import database
-# import wave
-# from google.cloud import aiplatform, storage, speech
-# import contextlib
-# import anthropic
-PATH = ""
-# ------------------------------
-# CONFIGURATION & FILE PATHS
-# ------------------------------
-VIDEO_FILE = "input_video.mp4"       # Input video file (recorded using a smartphone)
-AUDIO_FILE = "extracted_audio.wav"   # Output audio file after extraction
-DB_FILE = "contacts.db"              # SQLite database file
 import time
 import os
 import threading
 import numpy as np
+import ffmpeg
+import sounddevice as sd
+import wave
+from pydub import AudioSegment
 from playsound import playsound
 
-# Assume these are implemented in your modules:
-# - face_detection(image): returns a face embedding (numpy array) or None if no face is detected.
-# - preprocessing_pipeline(video_path): processes a video chunk and returns a dict with keys:
-#         "name", "context", "face_embedding", "video_path"
-# - text_to_speech(text): generates an audio file from text and returns its file path.
+# Assume these functions are defined in your modules:
+# face_detection.process_image_embedding(frame) → returns a face embedding or None.
+# preprocessing_pipeline.preprocess_video(video_path) → returns dict with keys: "name", "context", "face_embedding", "video_path"
+# text_to_speech(text) → generates an audio file from text and returns the file path.
 from preprocessing import face_detection, preprocessing_pipeline
 from postprocessing.text_to_speech import text_to_speech
+from database import InMemoryDatabase
 
-# In-memory database from your previous implementation
-from database import InMemoryDatabase  # Make sure your InMemoryDatabase has a search_by_embedding(threshold, embedding) method.
-
-# Initialize the database (or load an existing one)
+# Initialize the in-memory database
 db = InMemoryDatabase()
 
-# Similarity threshold (Euclidean distance threshold) for face matching
+# Similarity threshold for face matching
 SIMILARITY_THRESHOLD = 0.5
 
-# Video chunk duration in seconds
+# Duration for each video chunk in seconds
 CHUNK_DURATION = 15
+
+# Reduced video resolution (width, height) for faster processing
+REDUCED_RESOLUTION = (320, 240)
+
+# Audio recording parameters
+AUDIO_RATE = 16000  # Sampling rate (Hz)
+AUDIO_CHANNELS = 1  # Mono audio
+
+def record_audio(duration, output_audio_path):
+    """
+    Records audio from the default microphone for the given duration and saves as WAV.
+    """
+    print("🎤 Starting audio recording...")
+    audio_data = sd.rec(int(duration * AUDIO_RATE), samplerate=AUDIO_RATE, channels=AUDIO_CHANNELS, dtype='int16')
+    sd.wait()
+    # Save audio using wave module
+    with wave.open(output_audio_path, 'wb') as wf:
+        wf.setnchannels(AUDIO_CHANNELS)
+        wf.setsampwidth(2)  # 16-bit audio => 2 bytes
+        wf.setframerate(AUDIO_RATE)
+        wf.writeframes(audio_data.tobytes())
+    print(f"✅ Audio recorded: {output_audio_path}")
+
+def merge_audio_video(video_file, audio_file, output_file):
+    """
+    Merges video and audio files using ffmpeg.
+    """
+    print("🔄 Merging video and audio...")
+    try:
+        (
+            ffmpeg
+            .input(video_file)
+            .input(audio_file)
+            .output(output_file, vcodec="libx264", acodec="aac", strict="experimental", shortest=None)
+            .run(overwrite_output=True)
+        )
+        print(f"✅ Merged file saved as {output_file}")
+    except Exception as e:
+        print(f"❌ Error merging audio and video: {e}")
 
 def process_video_chunk(chunk_path):
     """
-    Process a video chunk: run the preprocessing pipeline and update the database.
+    Process a merged video chunk: run the preprocessing pipeline and update the database.
     If a similar face is found, update the summary and generate an audio summary.
     Otherwise, insert a new record.
     """
@@ -55,13 +81,11 @@ def process_video_chunk(chunk_path):
         print(f"🚨 No face embedding extracted from {chunk_path}.")
         return
 
-    # Search for a matching face in the database
-    match = db.extract_data_from_face_embedding(SIMILARITY_THRESHOLD, face_embedding)
+    match = db.extract_data_from_face_embedding(face_embedding, SIMILARITY_THRESHOLD)
     if match is not None:
         updated_summary = match["summary"] + " " + context
         db.update(face_embedding, match["name"], updated_summary)
         print(f"✅ Updated record for {match['name']}.")
-        # Generate TTS from the updated summary and play it
         audio_path = text_to_speech(match["summary"])
         print(f"🔊 Audio summary generated: {audio_path}")
         threading.Thread(target=playsound, args=(audio_path,), daemon=True).start()
@@ -73,15 +97,18 @@ def process_video_chunk(chunk_path):
         threading.Thread(target=playsound, args=(audio_path,), daemon=True).start()
 
 def record_and_process_loop():
-    # Open the camera (0 is the default device)
+    # Open the camera (device 0)
     cap = cv2.VideoCapture(0)
     if not cap.isOpened():
         print("🚨 Could not open camera!")
         return
 
-    # Initialize variables for video chunking
+    # Set camera resolution to reduced resolution for faster processing
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, REDUCED_RESOLUTION[0])
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, REDUCED_RESOLUTION[1])
+
     start_chunk_time = time.time()
-    frames = []
+    video_frames = []
 
     print("✅ Camera activated. Press 'q' to quit.")
 
@@ -91,50 +118,54 @@ def record_and_process_loop():
             print("🚨 Frame capture failed, exiting loop.")
             break
 
-        # Optionally display the frame
+        # Resize frame to reduced resolution (if needed)
+        frame = cv2.resize(frame, REDUCED_RESOLUTION)
         cv2.imshow("Camera", frame)
 
-        # Real-time face detection on the current frame
-        embedding = face_detection.process_image_embedding(frame)  # Should return a numpy array or None.
-        if embedding is not None:
-            # Check database for a similar face
-            match = db.extract_data_from_face_embedding(embedding, SIMILARITY_THRESHOLD)
-            if match is not None:
-                print(f"✅ Real-time: Found match for {match['name']}.")
-                # Generate audio summary (if not already playing) in a separate thread
-                audio_path = text_to_speech(match)
-                threading.Thread(target=playsound, args=(audio_path,), daemon=True).start()
-            else:
-                print("ℹ️ Real-time: Face detected but no match in database.")
-                # You might want to record this instance later when processing video chunks.
-        
-        # Append current frame to the current chunk
-        frames.append(frame)
+        # Optional: perform real-time face detection on a subset of frames (e.g., every 10th frame)
+        if int(time.time() * 10) % 10 == 0:
+            embedding = face_detection.process_image_embedding(frame)
+            if embedding is not None:
+                match = db.extract_data_from_face_embedding(embedding, SIMILARITY_THRESHOLD)
+                if match is not None:
+                    print(f"✅ Real-time: Found match for {match['name']}.")
+                    audio_path = text_to_speech(match["summary"])
+                    threading.Thread(target=playsound, args=(audio_path,), daemon=True).start()
+                else:
+                    print("ℹ️ Real-time: Face detected but no match in database.")
 
-        # Check if we have recorded enough frames for a CHUNK_DURATION video
+        video_frames.append(frame)
+
+        # Check if CHUNK_DURATION has elapsed
         if time.time() - start_chunk_time > CHUNK_DURATION:
-            # Save the chunk to a temporary video file
-            chunk_file = f"temp_chunk_{int(time.time())}.avi"
-            height, width, _ = frames[0].shape
+            # Save video chunk (using lower quality codec and frame rate for speed)
+            chunk_video_path = f"temp_chunk_{int(time.time())}.avi"
+            height, width, _ = video_frames[0].shape
             fourcc = cv2.VideoWriter_fourcc(*'XVID')
-            out = cv2.VideoWriter(chunk_file, fourcc, 20.0, (width, height))
-            for f in frames:
+            # Use a lower frame rate (e.g., 10 FPS) to speed up writing
+            out = cv2.VideoWriter(chunk_video_path, fourcc, 10.0, (width, height))
+            for f in video_frames:
                 out.write(f)
             out.release()
-            print(f"🔄 Recorded video chunk saved: {chunk_file}")
+            print(f"🔄 Recorded video chunk saved: {chunk_video_path}")
 
-            # DELETE ME
-            chunk_file = "data/lukas_convo.MOV"
-            # DELETE ME OH GOD
+            # Simultaneously record corresponding audio chunk for CHUNK_DURATION
+            chunk_audio_path = f"temp_audio_{int(time.time())}.wav"
+            audio_thread = threading.Thread(target=record_audio, args=(CHUNK_DURATION, chunk_audio_path))
+            audio_thread.start()
+            audio_thread.join()  # Wait for audio recording to finish
 
-            # Process the video chunk in a separate thread
-            threading.Thread(target=process_video_chunk, args=(chunk_file,), daemon=True).start()
+            # Merge video and audio into one file
+            merged_chunk_path = f"merged_chunk_{int(time.time())}.mp4"
+            merge_audio_video(chunk_video_path, chunk_audio_path, merged_chunk_path)
 
-            # Reset for next chunk
-            frames = []
+            # Process the merged video chunk in a separate thread
+            threading.Thread(target=process_video_chunk, args=(merged_chunk_path,), daemon=True).start()
+
+            # Reset for the next chunk
+            video_frames = []
             start_chunk_time = time.time()
 
-        # Exit on 'q' key press
         if cv2.waitKey(1) & 0xFF == ord('q'):
             print("🚪 Exiting capture loop.")
             break
