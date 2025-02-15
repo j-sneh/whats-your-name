@@ -9,6 +9,7 @@ with open("secrets.json", "r", encoding="utf-8") as file:
     GOOGLE_CLOUD_API_KEY = secrets["google_cloud_api_key"]
     ANTHROPIC_API_KEY = secrets["anthropic_api_key"]
     ELEVEN_LABS_API_KEY = secrets["eleven_labs_api_key"]
+VOICE_ID = "21m00Tcm4TlvDq8ikWAM"
 client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
 
@@ -80,4 +81,6 @@ def text_to_speech(json_data):
         print(f"MP3 file saved as {output_filename}")
     else:
         print("Error:", response.status_code, response.text)
+    
+    return output_filename
 

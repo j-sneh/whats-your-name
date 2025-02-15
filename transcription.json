@@ -1,0 +1,32 @@
+[
+    {
+        "speaker": "Unknown",
+        "start_time": 0.0,
+        "end_time": 2.0,
+        "text": " Should I like turn around maybe a little bit?"
+    },
+    {
+        "speaker": "SPEAKER_00",
+        "start_time": 2.0,
+        "end_time": 3.0,
+        "text": " Like that?"
+    },
+    {
+        "speaker": "SPEAKER_00",
+        "start_time": 3.0,
+        "end_time": 6.0,
+        "text": " Oh, Louis, that's so crazy that you would say something like that."
+    },
+    {
+        "speaker": "SPEAKER_00",
+        "start_time": 6.0,
+        "end_time": 7.0,
+        "text": " Wow."
+    },
+    {
+        "speaker": "SPEAKER_00",
+        "start_time": 7.0,
+        "end_time": 8.0,
+        "text": " I'm on that."
+    }
+]

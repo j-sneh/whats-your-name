@@ -145,10 +145,10 @@ def process_video(video_path, use_diarization=False):
 
 # Example usage
 if __name__ == "__main__":
-    video_file = "data/sample_video.mp4"
+    video_file = "data/test_video1.MOV"
     
     # Process video with diarization (set use_diarization=False to skip diarization)
-    output = process_video(video_file, use_diarization=True)
+    output = process_video(video_file, use_diarization=False)
 
     # Save results to JSON
     with open("transcription.json", "w") as f:

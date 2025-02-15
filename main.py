@@ -26,7 +26,7 @@ from playsound import playsound
 #         "name", "context", "face_embedding", "video_path"
 # - text_to_speech(text): generates an audio file from text and returns its file path.
 from preprocessing import face_detection, preprocessing_pipeline
-from postprocessing import text_to_speech
+from postprocessing.text_to_speech import text_to_speech
 
 # In-memory database from your previous implementation
 from database import InMemoryDatabase  # Make sure your InMemoryDatabase has a search_by_embedding(threshold, embedding) method.
@@ -38,7 +38,7 @@ db = InMemoryDatabase()
 SIMILARITY_THRESHOLD = 0.5
 
 # Video chunk duration in seconds
-CHUNK_DURATION = 15
+CHUNK_DURATION = 5
 
 def process_video_chunk(chunk_path):
     """
@@ -56,7 +56,7 @@ def process_video_chunk(chunk_path):
         return
 
     # Search for a matching face in the database
-    match = db.search_by_embedding(SIMILARITY_THRESHOLD, face_embedding)
+    match = db.extract_data_from_face_embedding(SIMILARITY_THRESHOLD, face_embedding)
     if match is not None:
         updated_summary = match["summary"] + " " + context
         db.update(face_embedding, match["name"], updated_summary)
@@ -102,7 +102,7 @@ def record_and_process_loop():
             if match is not None:
                 print(f"✅ Real-time: Found match for {match['name']}.")
                 # Generate audio summary (if not already playing) in a separate thread
-                audio_path = text_to_speech.text_to_speech(match)
+                audio_path = text_to_speech(match)
                 threading.Thread(target=playsound, args=(audio_path,), daemon=True).start()
             else:
                 print("ℹ️ Real-time: Face detected but no match in database.")
