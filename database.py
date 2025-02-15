@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 import numpy as np
-import preprocessing
+from sklearn.metrics.pairwise import cosine_similarity  # Import cosine similarity
+
 class AbstractDatabase(ABC):
     @abstractmethod
     def insert(self, face_vector, name, summary):
@@ -23,38 +24,54 @@ class InMemoryDatabase(AbstractDatabase):
         self.db = {}
 
     def insert(self, face_vector, name, summary):
-        self.db[face_vector] = {'name': name, 'summary': summary}
+        key = tuple(np.round(face_vector, 4))  # Convert to tuple for dict key
+        self.db[key] = {'name': name, 'summary': summary}
 
     def retrieve(self, face_vector):
-        return self.db.get(face_vector, None)
+        key = tuple(np.round(face_vector, 4))
+        return self.db.get(key, None)
 
     def update(self, face_vector, name, summary):
-        if face_vector in self.db:
-            self.db[face_vector] = {'name':  name, 'summary': self.db[face_vector]['summary'] + '\n' + summary}
+        key = tuple(np.round(face_vector, 4))
+        if key in self.db:
+            self.db[key]['summary'] += '\n' + summary
         else:
             self.insert(face_vector, name, summary)
 
     def delete(self, face_vector):
-        if face_vector in self.db:
-            del self.db[face_vector]
-    
-    def extract_data_from_face_embedding(self, embedding, threshold = 0.6):
-        keys = self.db.keys()
-        if len(keys) == 0:
-            return None
-        similarities = [None for i in range(len(keys))] # MAYBE?!? len(keys)
-        best_match = None
-        best_score = 0
-        for index, k in enumerate(keys):
-            similarities[index] = cosine_similarity(k, embedding)
-            if similarities[index] > threshold and similarities[index] > best_score:
-                best_score = similarities[index]
-                best_match = k
-        json_data = None
-        if best_match is not None:
-            json_data = self.retrieve(best_match)
-        return json_data
+        key = tuple(np.round(face_vector, 4))
+        if key in self.db:
+            del self.db[key]
 
+    def extract_data_from_face_embedding(self, embedding, threshold=0.6):
+        """
+        Searches for the closest face embedding using cosine similarity.
+
+        Args:
+            embedding (numpy.array): The face embedding vector to search for.
+            threshold (float): Minimum cosine similarity threshold for a match.
+
+        Returns:
+            dict or None: The matching entry from the database, or None if no match is found.
+        """
+        if not self.db:
+            return None  # Return None if database is empty
+
+        embedding = np.array(embedding).reshape(1, -1)  # Ensure it's a 2D array
+        keys = np.array([np.array(k) for k in self.db.keys()])  # Convert stored keys back to numpy arrays
+
+        # Compute cosine similarities
+        similarities = cosine_similarity(keys, embedding).flatten()
+
+        # Find best match
+        best_index = np.argmax(similarities)
+        best_score = similarities[best_index]
+
+        if best_score >= threshold:
+            best_match_key = tuple(keys[best_index])  # Convert back to tuple for retrieval
+            return self.retrieve(best_match_key)
+
+        return None  # No match found
 
 
 
