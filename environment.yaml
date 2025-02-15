@@ -1,0 +1,14 @@
+name: face_recognition_env
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - pip
+  - opencv
+  - numpy
+  - sqlite
+  - ffmpeg
+  - pip:
+      - deepface
+      - ffmpeg-python
