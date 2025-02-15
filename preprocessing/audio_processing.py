@@ -6,9 +6,13 @@ import json
 from pydub import AudioSegment
 from pyannote.audio.pipelines import SpeakerDiarization
 from pyannote.core import Segment
+import requests
 
 # Initialize Whisper model (choose "medium" for better accuracy)
 whisper_model = whisper.load_model("medium")
+
+ELEVEN_LABS_API_KEY = ""
+VOICE_ID = "21m00Tcm4TlvDq8ikWAM" # e.g., "21m00Tcm4TlvDq8ikWAM"
 
 # Initialize Pyannote speaker diarization model
 diarization_model = SpeakerDiarization.from_pretrained("pyannote/speaker-diarization")
@@ -154,37 +158,6 @@ import anthropic
 client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
 
-def transcribe_speech(speech_uri) -> str:
-    # If you're using ADC, no need to pass client_options
-    client = speech.SpeechClient()
-
-    diarization_config = speech.SpeakerDiarizationConfig(
-        enable_speaker_diarization=True,
-        min_speaker_count=2,
-        max_speaker_count=2,
-    )
-
-    config = speech.RecognitionConfig(
-        encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
-        sample_rate_hertz=16000,
-        language_code="en-US",
-        model="phone_call",
-        diarization_config=diarization_config,
-        api_key = GOOGLE_CLOUD_API_KEY
-    )
-
-
-    
-    audio = speech.RecognitionAudio(uri=speech_uri)
-    
-    response = client.recognize(config=config, audio=audio)
-    
-    transcript = " ".join([result.alternatives[0].transcript for result in response.results])
-    
-    return transcript
-
-
-
 def extract_info_claude(transcript):
     prompt = f"""
     You are a professional conversationalist, and you are very good at making summaries. 
@@ -211,4 +184,46 @@ def extract_info_claude(transcript):
     )
 
     return response.content[0].text
+
+
+def text_to_speech(json_data):
+    prompt = f"""Summarize the following json data using plain sentences
+    data : {json_data}. JUST WRITE A SUMMARY, NOTHING ELSE"""
+    response = client.messages.create(
+        model="claude-3-5-sonnet-20241022",
+        max_tokens=500,
+        messages=[{"role": "user", "content": prompt}]
+    )
+    summary = response.content[0].text
+    # The text you want to convert to speech
+
+    # Construct the API endpoint URL
+    url = f"https://api.elevenlabs.io/v1/text-to-speech/{VOICE_ID}"
+
+    # Define the request headers and payload
+    headers = {
+        "xi-api-key": ELEVEN_LABS_API_KEY,
+        "Content-Type": "application/json"
+    }
+
+    data = {
+        "text": summary,
+        "voice_settings": {
+            "stability": 0.5,         # Adjust stability as needed (0 to 1)
+            "similarity_boost": 0.75    # Adjust similarity boost as needed (0 to 1)
+        }
+    }
+
+    # Make the POST request to the ElevenLabs API
+    response = requests.post(url, json=data, headers=headers)
+
+    # Check if the request was successful
+    if response.status_code == 200:
+        # Save the binary response content as an MP3 file
+        output_filename = "output.mp3"
+        with open(output_filename, "wb") as f:
+            f.write(response.content)
+        print(f"MP3 file saved as {output_filename}")
+    else:
+        print("Error:", response.status_code, response.text)
 
