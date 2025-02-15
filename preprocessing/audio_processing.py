@@ -9,12 +9,19 @@
 from google.cloud import speech #, aiplatform, storage
 # import contextlib
 # import anthropic
+import json
 
 # == VIDEO TO TEXT -- NEED GOOGLE CLOUD API
 
-def transcribe_speech(speech_uri) -> str:
+
+with open("secrets.json", "r", encoding="utf-8") as file:
+    secrets = json.load(file)
+    GOOGLE_CLOUD_API_KEY = secrets["google_cloud_api_key"]
+    ANTHROPIC_API_KEY = secrets["anthropic_api_key"]
+
+def transcribe_speech(speech_file) -> str:
     # If you're using ADC, no need to pass client_options
-    client = speech.SpeechClient()
+    client = speech.SpeechClient(client_options={"api_key": GOOGLE_CLOUD_API_KEY })
 
     diarization_config = speech.SpeakerDiarizationConfig(
         enable_speaker_diarization=True,
@@ -31,10 +38,17 @@ def transcribe_speech(speech_uri) -> str:
     )
 
     
-    audio = speech.RecognitionAudio(uri=speech_uri)
+    with open(speech_file, "rb") as audio_file:
+        content = audio_file.read()
+
+    audio = speech.RecognitionAudio(content=content)
     
     response = client.recognize(config=config, audio=audio)
+    print(response)
     
     transcript = " ".join([result.alternatives[0].transcript for result in response.results])
     
     return transcript
+
+if __name__ == "__main__":
+    print(transcribe_speech("Hello.mp3"))
