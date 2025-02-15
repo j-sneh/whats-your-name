@@ -31,8 +31,8 @@ CHUNK_DURATION = 15
 REDUCED_RESOLUTION = (320, 240)
 
 # Audio recording parameters
-AUDIO_RATE = 16000  # Sampling rate (Hz)
-AUDIO_CHANNELS = 1  # Mono audio
+AUDIO_RATE = 8000       # Lower sampling rate (Hz) for faster processing
+AUDIO_CHANNELS = 1      # Mono audio
 
 def record_audio(duration, output_audio_path):
     """
@@ -107,8 +107,14 @@ def record_and_process_loop():
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, REDUCED_RESOLUTION[0])
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, REDUCED_RESOLUTION[1])
 
+    # Initialize timing and frame storage for a chunk
     start_chunk_time = time.time()
     video_frames = []
+
+    # Start the audio recording thread for the first chunk immediately
+    chunk_audio_path = f"temp_audio_{int(start_chunk_time)}.wav"
+    audio_thread = threading.Thread(target=record_audio, args=(CHUNK_DURATION, chunk_audio_path))
+    audio_thread.start()
 
     print("✅ Camera activated. Press 'q' to quit.")
 
@@ -138,22 +144,19 @@ def record_and_process_loop():
 
         # Check if CHUNK_DURATION has elapsed
         if time.time() - start_chunk_time > CHUNK_DURATION:
-            # Save video chunk (using lower quality codec and frame rate for speed)
+            # Ensure the audio recording for this chunk is complete
+            audio_thread.join()
+
+            # Save video chunk (using lower quality codec and lower frame rate for speed)
             chunk_video_path = f"temp_chunk_{int(time.time())}.avi"
             height, width, _ = video_frames[0].shape
             fourcc = cv2.VideoWriter_fourcc(*'XVID')
-            # Use a lower frame rate (e.g., 10 FPS) to speed up writing
+            # Lower frame rate (e.g., 10 FPS) to speed up writing
             out = cv2.VideoWriter(chunk_video_path, fourcc, 10.0, (width, height))
             for f in video_frames:
                 out.write(f)
             out.release()
             print(f"🔄 Recorded video chunk saved: {chunk_video_path}")
-
-            # Simultaneously record corresponding audio chunk for CHUNK_DURATION
-            chunk_audio_path = f"temp_audio_{int(time.time())}.wav"
-            audio_thread = threading.Thread(target=record_audio, args=(CHUNK_DURATION, chunk_audio_path))
-            audio_thread.start()
-            audio_thread.join()  # Wait for audio recording to finish
 
             # Merge video and audio into one file
             merged_chunk_path = f"merged_chunk_{int(time.time())}.mp4"
@@ -162,9 +165,13 @@ def record_and_process_loop():
             # Process the merged video chunk in a separate thread
             threading.Thread(target=process_video_chunk, args=(merged_chunk_path,), daemon=True).start()
 
-            # Reset for the next chunk
-            video_frames = []
+            # Reset for the next chunk: update timer, clear frames,
+            # and start a new audio recording thread concurrently.
             start_chunk_time = time.time()
+            video_frames = []
+            chunk_audio_path = f"temp_audio_{int(start_chunk_time)}.wav"
+            audio_thread = threading.Thread(target=record_audio, args=(CHUNK_DURATION, chunk_audio_path))
+            audio_thread.start()
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             print("🚪 Exiting capture loop.")
