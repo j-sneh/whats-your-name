@@ -51,7 +51,7 @@ def text_to_speech(json_data):
     - Keep it **brief (2-4 sentences max)** but **informative and friendly**.
     - Ensure the tone is **warm, polite, and welcoming**.
     - Avoid **sensitive or personal details** unless they are explicitly safe to include.
-    - Try your best to say the correct name. If there is no name, just say one.
+    - Try your best to say the correct name.
     The data is as follows, in json format : {json_data}. JUST WRITE A SUMMARY, NOTHING ELSE"""
     response = client.messages.create(
         model="claude-3-5-sonnet-20241022",
