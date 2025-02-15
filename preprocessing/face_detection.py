@@ -15,6 +15,7 @@ def extract_face_embedding(video_path, num_frames=5, frame_interval=30):
     Returns:
         np.array: Average face embedding for the detected face(s), or None if no faces found.
     """
+
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
         raise ValueError(f"Error: Unable to open video file {video_path}")
@@ -64,6 +65,8 @@ def test_face_detection(video_paths):
     Args:
         video_paths (list): List of video file paths to test.
     """
+
+    
     total_videos = len(video_paths)
     total_frames_checked = 0
     total_faces_detected = 0
@@ -96,6 +99,7 @@ def test_face_detection(video_paths):
 # Example usage
 if __name__ == "__main__":
     test_videos = [
-        "data/test_video1.mp4",
+        "data/test_video1.MOV",
+        "data/test_video2.MOV",
     ]
     test_face_detection(test_videos)
