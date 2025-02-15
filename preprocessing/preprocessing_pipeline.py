@@ -1,7 +1,7 @@
 import os
 import cv2
-from audio_processing import extract_audio_info
-from face_detection import extract_face_embedding
+from preprocessing.audio_processing import extract_audio
+from preprocessing.face_detection import extract_face_embedding
 
 def preprocess_video(video_path):
     """
@@ -23,7 +23,7 @@ def preprocess_video(video_path):
         raise FileNotFoundError(f"Video file not found at {video_path}")
     
     # Step 1: Extract audio information (name and context)
-    name, context = extract_audio_info(video_path)
+    name, context = extract_audio(video_path)
     
     # Step 2: Extract face embedding from the video
     face_embedding = extract_face_embedding(video_path)
