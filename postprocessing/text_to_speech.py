@@ -42,8 +42,17 @@ def extract_info_claude(transcript):
 
 
 def text_to_speech(json_data):
-    prompt = f"""Summarize the following json data using plain sentences
-    data : {json_data}. JUST WRITE A SUMMARY, NOTHING ELSE"""
+    prompt = f"""
+    - Your task is to **introduce a person in a short spoken-friendly summary** based on their **name and bullet-point facts**.
+    - The **most important information is the person's name**, so **begin the summary with their name**.
+    - Talk about personnality, and what we did together. 
+    - When speaking about bullet points, always use the past tense. e.g. "Last time, Lucas went to get a coffee"
+    - The introduction should **sound natural, engaging, and safe**—as if spoken in a conversation.
+    - Keep it **brief (2-4 sentences max)** but **informative and friendly**.
+    - Ensure the tone is **warm, polite, and welcoming**.
+    - Avoid **sensitive or personal details** unless they are explicitly safe to include.
+    - Try your best to say the correct name. If there is no name, just say one.
+    The data is as follows, in json format : {json_data}. JUST WRITE A SUMMARY, NOTHING ELSE"""
     response = client.messages.create(
         model="claude-3-5-sonnet-20241022",
         max_tokens=500,
