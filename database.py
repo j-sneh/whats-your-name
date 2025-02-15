@@ -58,9 +58,9 @@ class InMemoryDatabase(AbstractDatabase):
 
             if best_score >= threshold:
                 best_match_key = tuple(np.round(keys[best_index], 4))
-                return self.retrieve(best_match_key)
+                return self.retrieve(best_match_key), best_match_key
 
-            return None
+            return None, embedding
 
 
 def cosine_similarity(embedding1, embedding2):

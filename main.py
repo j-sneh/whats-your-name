@@ -34,7 +34,7 @@ REDUCED_RESOLUTION = (320, 240)
 AUDIO_RATE = 8000       # Lower sampling rate (Hz) for faster processing
 AUDIO_CHANNELS = 1      # Mono audio
 
-LAST_MATCH = None
+LAST_KEY = None
 
 def record_audio(duration, output_audio_path):
     """
@@ -69,7 +69,7 @@ def merge_audio_video(video_file, audio_file, output_file):
         print(f"❌ Error merging audio and video: {e}")
 
 def process_chunks(audio_path, video_path):
-    global LAST_MATCH
+    global LAST_KEY
     
     """
     Process a merged video chunk: run the preprocessing pipeline and update the database.
@@ -85,14 +85,14 @@ def process_chunks(audio_path, video_path):
         print(f"🚨 No face embedding extracted from {chunk_path}.")
         return
     
-    match = db.extract_data_from_face_embedding(face_embedding, SIMILARITY_THRESHOLD)
-    if match is not None and match != LAST_MATCH:
+    match, key = db.extract_data_from_face_embedding(face_embedding, SIMILARITY_THRESHOLD)
+    if match is not None and match != LAST_KEY:
         updated_summary = match["summary"] + " " + context
         db.update(face_embedding, match["name"], updated_summary)
         print(f"✅ Updated record for {match['name']}.")
         audio_path = text_to_speech(match["summary"])
         print(f"🔊 Audio summary generated: {audio_path}")
-        LAST_MATCH = match
+        LAST_KEY = key
         threading.Thread(target=playsound, args=(audio_path,), daemon=True).start()
     else:
         db.insert(face_embedding, name, context)
