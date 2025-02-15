@@ -30,11 +30,30 @@ class InMemoryDatabase(AbstractDatabase):
 
     def update(self, face_vector, name, summary):
         if face_vector in self.db:
-            self.db[face_vector] = {'name': name, 'summary': summary}
+            self.db[face_vector] = {'name':  name, 'summary': self.db[face_vector]['summary'] + '\n' + summary}
+        else:
+            self.insert(face_vector, name, summary)
 
     def delete(self, face_vector):
         if face_vector in self.db:
             del self.db[face_vector]
+    
+    def extract_data_from_face_embedding(self, embedding, threshold = 0.6):
+        keys = np.array(self.db.keys)
+        similarities = np.zeros(len(keys))
+        best_match = None
+        best_score = 0
+        for index, k in enumerate(keys):
+            similarities[index] = cosine_similarity(k, embedding)
+            if similarities[index] > threshold and similarities[index] > best_score:
+                best_score = similarities[index]
+                best_match = k
+        json_data = None
+        if best_match is not None:
+            json_data = self.retrieve(best_match)
+        return json_data
+
+
 
 
 def cosine_similarity(embedding1, embedding2):
@@ -54,19 +73,3 @@ def cosine_similarity(embedding1, embedding2):
     norm1 = np.linalg.norm(embedding1)
     norm2 = np.linalg.norm(embedding2)
     return dot_product / (norm1 * norm2)
-
-def extract_data_from_face_embedding(database, embedding):
-    keys = np.array(database.keys)
-    similarities = np.zeros(len(keys))
-    best_match = None
-    best_score = 0
-    for index, k in enumerate(keys):
-        similarities[index] = cosine_similarity(k, embedding)
-        if similarities[index] > 0.6 and similarities[index] > best_score:
-            best_score = similarities[index]
-            best_match = k
-    json_data = None
-    if best_match is not None:
-        json_data = database.retrieve(best_match)
-    return json_data
-

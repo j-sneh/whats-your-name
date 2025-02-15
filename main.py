@@ -101,11 +101,11 @@ def record_and_process_loop():
         embedding = face_detection(frame)  # Should return a numpy array or None.
         if embedding is not None:
             # Check database for a similar face
-            match = db.search_by_embedding(SIMILARITY_THRESHOLD, embedding)
+            match = db.extract_data_from_face_embedding(embedding, SIMILARITY_THRESHOLD)
             if match is not None:
                 print(f"✅ Real-time: Found match for {match['name']}.")
                 # Generate audio summary (if not already playing) in a separate thread
-                audio_path = text_to_speech(match["summary"])
+                audio_path = text_to_speech(match)
                 threading.Thread(target=playsound, args=(audio_path,), daemon=True).start()
             else:
                 print("ℹ️ Real-time: Face detected but no match in database.")
