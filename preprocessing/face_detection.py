@@ -3,6 +3,23 @@ import cv2
 import numpy as np
 from deepface import DeepFace
 
+def cosine_similarity(embedding1, embedding2):
+    """
+    Computes the cosine similarity between two face embeddings.
+    
+    Args:
+        embedding1 (np.array): First face embedding.
+        embedding2 (np.array): Second face embedding.
+
+    Returns:
+        float: Cosine similarity between the two embeddings.
+    """
+
+    dot_product = np.dot(embedding1, embedding2)
+    norm1 = np.linalg.norm(embedding1)
+    norm2 = np.linalg.norm(embedding2)
+    return dot_product / (norm1 * norm2)
+
 def extract_face_embedding(video_path, num_frames=5, frame_interval=30):
     """
     Extracts a face embedding from multiple frames in a video using OpenCV and DeepFace.
@@ -58,7 +75,7 @@ def extract_face_embedding(video_path, num_frames=5, frame_interval=30):
     avg_embedding = np.mean(embeddings, axis=0)
     return avg_embedding, detected_faces
 
-def test_face_detection(video_paths, similarity_threshold=0.5):
+def test_face_detection(video_paths, similarity_threshold=0.9):
     """
     Tests face detection across multiple videos and compares face embeddings.
     
@@ -110,8 +127,7 @@ def test_face_detection(video_paths, similarity_threshold=0.5):
         for j in range(i + 1, len(video_keys)):
             video1, video2 = video_keys[i], video_keys[j]
 
-            # Compute cosine similarity (1 - cosine distance)
-            similarity = 1 - cosine(embeddings[video1], embeddings[video2])
+            similarity = cosine_similarity(embeddings[video1], embeddings[video2])
 
             print(f"🔍 Cosine Similarity between {video1} and {video2}: {similarity:.4f}")
 
