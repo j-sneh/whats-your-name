@@ -144,22 +144,6 @@ def test_face_detection(video_paths, similarity_threshold=0.9):
         print("\n❌ No matching faces found across videos.")
 
 
-def extract_data_from_face_embedding(database, embedding):
-    keys = np.array(database.keys)
-    similarities = np.zeros(len(keys))
-    best_match = None
-    best_score = 0
-    for index, k in enumerate(keys):
-        similarities[index] = cosine_similarity(k, embedding)
-        if similarities[index] > 0.6 and similarities[index] > best_score:
-            best_score = similarities[index]
-            best_match = k
-    json_data = None
-    if best_match is not None:
-        json_data = database.retrieve(best_match)
-    return json_data
-
-    
 
 
 

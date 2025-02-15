@@ -6,6 +6,7 @@ import sqlite3
 import pyttsx3
 import speech_recognition as sr
 import ffmpeg  # requires ffmpeg-python
+import database
 import wave
 from google.cloud import aiplatform, storage, speech
 import contextlib
@@ -176,11 +177,13 @@ def main():
     
     # Step 4: Process Frames for Face Detection
     face_encoding, face_frame = process_frames_for_face(frames)
+
     
     if face_encoding is None:
         print("No face found. Exiting.")
         return
     
+    key = database.extract_data_from_face_embedding()
     # For the purpose of MVP, we will use a dummy name for the contact.
     name = "Contact 1"
     
@@ -242,7 +245,8 @@ def extract_info_claude(transcript):
     prompt = f"""
     You are a professional conversationalist, and you are very good at making summaries. 
     You will be given a transcription between speaker 1 and speaker 2. The first to say they are face-blind is the user.
-    Extract the following information from the speaker that is not face blind.
+    Extract the following information from the speaker that is not face blind. Also, give the timestamp in which the interlocutor 
+    gives out their names
     
     - Name:
     - Other Infos:
@@ -266,5 +270,71 @@ def extract_info_claude(transcript):
     return response.content
 
 
-def anchor_text(bounding_box_coordinates, video_frames, start):
 
+def overlay_bbox_and_text(video_path, output_path, bboxes, stamp, stamp_text, text):
+    """
+    Overlays bounding boxes (with center coordinates) and text on a video, then returns the new video file.
+
+    Args:
+        video_path (str): Path to the input video file.
+        output_path (str): Path to save the output video.
+        bboxes (list of tuples): A list of tuples (x, y, w, h) for each frame (starting at stamp seconds),
+                                 where (x, y) is the center of the box.
+        stamp (float): The time (in seconds) when the bounding boxes start appearing.
+        stamp_text (float): The time (in seconds) when the text starts appearing.
+        text (str): The text to overlay on the video.
+    
+    Returns:
+        str: The output video file path.
+    """
+    fps = 30  # Video frame rate
+    box_start_frame = int(stamp * fps)
+    text_start_frame = int(stamp_text * fps)
+    
+    cap = cv2.VideoCapture(video_path)
+    if not cap.isOpened():
+        raise IOError(f"Cannot open video: {video_path}")
+    
+    frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    
+    # Define the codec and create a VideoWriter object.
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    out = cv2.VideoWriter(output_path, fourcc, fps, (frame_width, frame_height))
+    
+    frame_idx = 0
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+        
+        # If we're at or after the stamp for bounding boxes...
+        if frame_idx >= box_start_frame:
+            # Compute relative frame index since stamp.
+            rel_frame = frame_idx - box_start_frame
+            # If there's a bounding box for this frame...
+            if rel_frame < len(bboxes):
+                center_x, center_y, w, h = bboxes[rel_frame]
+                # Convert center coordinates to top-left corner coordinates.
+                top_left_x = int(center_x - w / 2)
+                top_left_y = int(center_y - h / 2)
+                bottom_right_x = int(center_x + w / 2)
+                bottom_right_y = int(center_y + h / 2)
+                
+                # Draw the bounding box (in green).
+                cv2.rectangle(frame, (top_left_x, top_left_y), (bottom_right_x, bottom_right_y), (0, 0, 0), 2)
+                
+                # Overlay text if we're past the stamp for text.
+                if frame_idx >= text_start_frame:
+                    # Position the text above the bounding box.
+                    cv2.putText(frame, text, (top_left_x, top_left_y - 10),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+        
+        out.write(frame)
+        frame_idx += 1
+    
+    cap.release()
+    out.release()
+    print(f"Output video saved to: {output_path}")
+    
+    return output_path
