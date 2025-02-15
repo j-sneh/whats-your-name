@@ -172,4 +172,4 @@ cython_debug/
 
 #data
 data/
-secrets.jsonsecrets.jsonsecrets.json
+secrets.json
