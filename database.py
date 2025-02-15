@@ -45,7 +45,7 @@ class InMemoryDatabase(AbstractDatabase):
         
     def extract_data_from_face_embedding(self, embedding, threshold=0.6):
             if not self.db:
-                return None
+                return None, None
 
             embedding = np.array(embedding).reshape(1, -1)[0]  # make it a 1D vector for the custom function
             keys = [np.array(k) for k in self.db.keys()]

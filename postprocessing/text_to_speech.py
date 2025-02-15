@@ -46,7 +46,7 @@ def text_to_speech(json_data):
     - Your task is to **introduce a person in a short spoken-friendly summary** based on their **name and bullet-point facts**.
     - The **most important information is the person's name**, so **begin the summary with their name**.
     - Talk about personnality, and what we did together. 
-    - When speaking about bullet points, always use the past tense. e.g. "Last time, Lucas went to get a coffee"
+    - When speaking about bullet points, always use the past tense. Only use the bullet points provided
     - The introduction should **sound natural, engaging, and safe**—as if spoken in a conversation.
     - Keep it **brief (2-4 sentences max)** but **informative and friendly**.
     - Ensure the tone is **warm, polite, and welcoming**.

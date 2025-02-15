@@ -137,7 +137,7 @@ def record_and_process_loop():
         if int(time.time() * 10) % 10 == 0:
             embedding = face_detection.process_image_embedding(frame)
             if embedding is not None:
-                match = db.extract_data_from_face_embedding(embedding, SIMILARITY_THRESHOLD)
+                match, key = db.extract_data_from_face_embedding(embedding, SIMILARITY_THRESHOLD)
                 if match is not None:
                     print(f"✅ Real-time: Found match for {match['name']}.")
                     audio_path = text_to_speech(match["summary"])
