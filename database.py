@@ -60,6 +60,9 @@ class InMemoryDatabase(AbstractDatabase):
         embedding = np.array(embedding).reshape(1, -1)  # Ensure it's a 2D array
         keys = np.array([np.array(k) for k in self.db.keys()])  # Convert stored keys back to numpy arrays
 
+
+        print(keys)
+        print(embedding)
         # Compute cosine similarities
         similarities = cosine_similarity(keys, embedding).flatten()
 
@@ -88,7 +91,7 @@ def cosine_similarity(embedding1, embedding2):
         float: Cosine similarity between the two embeddings.
     """
 
-    dot_product = np.dot(embedding1, embedding2)
+    dot_product = np.dot(embedding1, embedding2.T)
     norm1 = np.linalg.norm(embedding1)
     norm2 = np.linalg.norm(embedding2)
     return dot_product / (norm1 * norm2)

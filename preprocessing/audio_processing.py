@@ -8,11 +8,11 @@ from pyannote.audio.pipelines import SpeakerDiarization
 from pyannote.core import Segment
 import requests
 
-# Initialize Whisper model (choose "medium" for better accuracy)
+# Initialize Whisper model (choose "base" for better accuracy on CPU)
 whisper_model = whisper.load_model("base")
 
 ELEVEN_LABS_API_KEY = ""
-VOICE_ID = "21m00Tcm4TlvDq8ikWAM" # e.g., "21m00Tcm4TlvDq8ikWAM"
+VOICE_ID = "21m00Tcm4TlvDq8ikWAM"  # e.g., "21m00Tcm4TlvDq8ikWAM"
 
 # Initialize Pyannote speaker diarization model
 diarization_model = SpeakerDiarization.from_pretrained("pyannote/speaker-diarization")
@@ -74,7 +74,7 @@ def transcribe_audio(audio_path):
         audio_path (str): Path to the input audio file.
 
     Returns:
-        dict: Transcription results.
+        dict: Transcription results (list of segments).
     """
     result = whisper_model.transcribe(audio_path)
     return result["segments"]
@@ -101,15 +101,16 @@ def diarize_audio(audio_path):
 
     return speaker_segments
 
-def process_video(video_path):
+def process_video(video_path, use_diarization=False):
     """
-    Processes a video file: extracts audio, transcribes speech, and applies speaker diarization.
+    Processes a video file: extracts audio, transcribes speech, and optionally applies speaker diarization.
 
     Args:
         video_path (str): Path to the input video file.
+        use_diarization (bool): Whether to apply speaker diarization (default True).
 
     Returns:
-        dict: Structured transcription and speaker diarization results.
+        list: Structured transcription (and diarization) results.
     """
     audio_path = extract_audio(video_path)
     audio_chunks = split_audio(audio_path)
@@ -118,17 +119,20 @@ def process_video(video_path):
 
     for chunk_path in audio_chunks:
         transcription = transcribe_audio(chunk_path)
-        diarization = diarize_audio(chunk_path)
+        if use_diarization:
+            diarization = diarize_audio(chunk_path)
+        else:
+            diarization = []  # No diarization; default speaker will be used
 
-        # Match speaker segments with transcription
+        # Match speaker segments with transcription segments
         for segment in transcription:
             start, end = segment["start"], segment["end"]
             speaker = "Unknown"
-
-            for diarized in diarization:
-                if diarized["start"] <= start and diarized["end"] >= end:
-                    speaker = diarized["speaker"]
-                    break
+            if use_diarization:
+                for diarized in diarization:
+                    if diarized["start"] <= start and diarized["end"] >= end:
+                        speaker = diarized["speaker"]
+                        break
 
             results.append({
                 "speaker": speaker,
@@ -141,8 +145,10 @@ def process_video(video_path):
 
 # Example usage
 if __name__ == "__main__":
-    video_file = "data/sample_video.mp4"
-    output = process_video(video_file)
+    video_file = "data/test_video1.MOV"
+    
+    # Process video with diarization (set use_diarization=False to skip diarization)
+    output = process_video(video_file, use_diarization=False)
 
     # Save results to JSON
     with open("transcription.json", "w") as f:
@@ -150,4 +156,3 @@ if __name__ == "__main__":
 
     print("\n===== FINAL TRANSCRIPTION =====")
     print(json.dumps(output, indent=4))
-
