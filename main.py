@@ -1,15 +1,12 @@
 #!/usr/bin/env python
 import cv2
-import face_recognition
-import sqlite3
-import pyttsx3
-import speech_recognition as sr
-import ffmpeg  # requires ffmpeg-python
-import database
-import wave
-from google.cloud import aiplatform, storage, speech
-import contextlib
-import anthropic
+# import speech_recognition as sr
+# import ffmpeg  # requires ffmpeg-python
+# import database
+# import wave
+# from google.cloud import aiplatform, storage, speech
+# import contextlib
+# import anthropic
 PATH = ""
 # ------------------------------
 # CONFIGURATION & FILE PATHS
@@ -49,7 +46,7 @@ def process_video_chunk(chunk_path):
     If a similar face is found, update the summary and generate an audio summary.
     Otherwise, insert a new record.
     """
-    info = preprocessing_pipeline(chunk_path)
+    info = preprocessing_pipeline.preprocess_video(chunk_path)
     name = info.get("name", "Unknown")
     context = info.get("context", "")
     face_embedding = info.get("face_embedding", None)
@@ -98,14 +95,14 @@ def record_and_process_loop():
         cv2.imshow("Camera", frame)
 
         # Real-time face detection on the current frame
-        embedding = face_detection(frame)  # Should return a numpy array or None.
+        embedding = face_detection.process_image_embedding(frame)  # Should return a numpy array or None.
         if embedding is not None:
             # Check database for a similar face
             match = db.extract_data_from_face_embedding(embedding, SIMILARITY_THRESHOLD)
             if match is not None:
                 print(f"✅ Real-time: Found match for {match['name']}.")
                 # Generate audio summary (if not already playing) in a separate thread
-                audio_path = text_to_speech(match)
+                audio_path = text_to_speech.text_to_speech(match)
                 threading.Thread(target=playsound, args=(audio_path,), daemon=True).start()
             else:
                 print("ℹ️ Real-time: Face detected but no match in database.")
@@ -125,6 +122,10 @@ def record_and_process_loop():
                 out.write(f)
             out.release()
             print(f"🔄 Recorded video chunk saved: {chunk_file}")
+
+            # DELETE ME
+            chunk_file = "data/lukas_convo.MOV"
+            # DELETE ME OH GOD
 
             # Process the video chunk in a separate thread
             threading.Thread(target=process_video_chunk, args=(chunk_file,), daemon=True).start()

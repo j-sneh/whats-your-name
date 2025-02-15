@@ -12,6 +12,7 @@ with open("secrets.json", "r", encoding="utf-8") as file:
     secrets = json.load(file)
     GOOGLE_CLOUD_API_KEY = secrets["google_cloud_api_key"]
     ANTHROPIC_API_KEY = secrets["anthropic_api_key"]
+    ELEVEN_LABS_API_KEY = secrets["eleven_labs_api_key"]
 
 
 client = speech.SpeechClient(client_options={"api_key": GOOGLE_CLOUD_API_KEY })

@@ -48,19 +48,19 @@ def extract_face_embedding(input_path, num_frames=5, frame_interval=30):
         # Process as an image
         return process_image_embedding(input_path)
 
-def process_image_embedding(image_path):
+def process_image_embedding(image):
     """
     Extracts a face embedding from a single image.
 
     Args:
-        image_path (str): Path to the image file.
+        image (numpy array? tensor? we'll see): image
 
     Returns:
         np.array: Face embedding, or None if no face is detected.
     """
-    image = cv2.imread(image_path)
-    if image is None:
-        raise ValueError(f"❌ Error: Could not read image file {image_path}")
+    # image = cv2.imread(image_path)
+    # if image is None:
+    #     raise ValueError(f"❌ Error: Could not read image file {image_path}")
 
     # Convert to RGB (OpenCV loads images in BGR format)
     rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
@@ -68,7 +68,7 @@ def process_image_embedding(image_path):
     try:
         embedding_objs = DeepFace.represent(rgb_image, model_name="Facenet", enforce_detection=False)
         if embedding_objs:
-            print(f"✅ Face detected in image: {image_path}")
+            print(f"✅ Face detected in image")
             return np.array(embedding_objs[0]["embedding"])
     except Exception as e:
         print(f"❌ Warning: Face detection failed in image: {e}")

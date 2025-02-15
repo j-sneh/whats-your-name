@@ -1,53 +1,83 @@
-#!/usr/bin/env python
-import os
-import sys
-import time
-from TTS.api import TTS
 
-# Threshold for warning about text length (e.g., 500 characters)
-TEXT_LENGTH_THRESHOLD = 500
+from google.cloud import speech_v1p1beta1 as speech
+import anthropic
+import json
+import requests
+# == VIDEO TO TEXT -- NEED GOOGLE CLOUD API
+with open("secrets.json", "r", encoding="utf-8") as file:
+    secrets = json.load(file)
+    GOOGLE_CLOUD_API_KEY = secrets["google_cloud_api_key"]
+    ANTHROPIC_API_KEY = secrets["anthropic_api_key"]
+    ELEVEN_LABS_API_KEY = secrets["eleven_labs_api_key"]
+client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
-def text_to_speech(text, output_folder="output_audio", threshold=TEXT_LENGTH_THRESHOLD):
+
+def extract_info_claude(transcript):
+    prompt = f"""
+    You are a professional conversationalist, and you are very good at making summaries. 
+    You will be given a transcription between speaker 1 and speaker 2. Then, you will be given a set of words, each being annotated
+    with whether they belong to speaker 1 or speaker 2. The first to say "my friend" is the user.
+    Extract the following information from the speaker that is not face blind. Also, give the timestamp in which the interlocutor 
+    gives out their names. 
+    Transcript:
+    {transcript}
+    The 'Other Infos' part should contain at most 5 short bullet points 
+    Provide the response in this JSON format:
+    {{
+        "name": "[Insert the name here]",
+        "other_info": "Insert the bullet points here"
+        "timestamp : [Insert the timestamp in seconds here]"
+    }}
+    DO NOT WRITE ANYTHING OUTSIDE OF BRACKETS
     """
-    Converts input text to speech using Coqui TTS, saves the audio file, and returns the output folder path.
 
-    Args:
-        text (str): The text to synthesize.
-        output_folder (str): Folder where the audio file will be saved.
-        threshold (int): Maximum recommended text length before printing a warning.
+    response = client.messages.create(
+        model="claude-3-5-sonnet-20241022",
+        max_tokens=500,
+        messages=[{"role": "user", "content": prompt}]
+    )
 
-    Returns:
-        str: The path to the output folder.
-    """
-    # Warn if the text is too long
-    if len(text) > threshold:
-        print("⚠️ Warning: The input text is quite long. Synthesis may take longer than usual.")
-    
-    # Create output folder if it doesn't exist
-    if not os.path.exists(output_folder):
-        os.makedirs(output_folder)
-    
-    # Generate a unique file name using the current timestamp
-    timestamp = int(time.time())
-    file_name = f"tts_output_{timestamp}.wav"
-    output_path = os.path.join(output_folder, file_name)
-    
-    # Initialize the Coqui TTS model (using a pre-trained model, CPU-only)
-    print("🔄 Initializing Coqui TTS model...")
-    tts = TTS(model_name="tts_models/en/ljspeech/tacotron2-DDC", progress_bar=False, gpu=False)
-    
-    # Synthesize the text and save to file
-    print("🔄 Converting text to speech...")
-    tts.tts_to_file(text=text, file_path=output_path)
-    print(f"✅ Audio file saved to: {output_path}")
-    
-    return output_folder
+    return response.content[0].text
 
-if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Usage: python text_to_speech.py \"Your text to synthesize\"")
-        sys.exit(1)
-    
-    input_text = sys.argv[1]
-    folder_path = text_to_speech(input_text)
-    print(f"Output folder: {folder_path}")
+
+def text_to_speech(json_data):
+    prompt = f"""Summarize the following json data using plain sentences
+    data : {json_data}. JUST WRITE A SUMMARY, NOTHING ELSE"""
+    response = client.messages.create(
+        model="claude-3-5-sonnet-20241022",
+        max_tokens=500,
+        messages=[{"role": "user", "content": prompt}]
+    )
+    summary = response.content[0].text
+    # The text you want to convert to speech
+
+    # Construct the API endpoint URL
+    url = f"https://api.elevenlabs.io/v1/text-to-speech/{VOICE_ID}"
+
+    # Define the request headers and payload
+    headers = {
+        "xi-api-key": ELEVEN_LABS_API_KEY,
+        "Content-Type": "application/json"
+    }
+
+    data = {
+        "text": summary,
+        "voice_settings": {
+            "stability": 0.5,         # Adjust stability as needed (0 to 1)
+            "similarity_boost": 0.75    # Adjust similarity boost as needed (0 to 1)
+        }
+    }
+
+    # Make the POST request to the ElevenLabs API
+    response = requests.post(url, json=data, headers=headers)
+
+    # Check if the request was successful
+    if response.status_code == 200:
+        # Save the binary response content as an MP3 file
+        output_filename = "output.mp3"
+        with open(output_filename, "wb") as f:
+            f.write(response.content)
+        print(f"MP3 file saved as {output_filename}")
+    else:
+        print("Error:", response.status_code, response.text)
+

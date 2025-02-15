@@ -39,8 +39,10 @@ class InMemoryDatabase(AbstractDatabase):
             del self.db[face_vector]
     
     def extract_data_from_face_embedding(self, embedding, threshold = 0.6):
-        keys = np.array(self.db.keys)
-        similarities = np.zeros(len(keys))
+        keys = self.db.keys()
+        if len(keys) == 0:
+            return None
+        similarities = [None for i in range(len(keys))] # MAYBE?!? len(keys)
         best_match = None
         best_score = 0
         for index, k in enumerate(keys):
