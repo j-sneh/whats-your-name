@@ -43,24 +43,24 @@ class InMemoryDatabase(AbstractDatabase):
         if key in self.db:
             del self.db[key]
         
-def extract_data_from_face_embedding(self, embedding, threshold=0.6):
-        if not self.db:
+    def extract_data_from_face_embedding(self, embedding, threshold=0.6):
+            if not self.db:
+                return None
+
+            embedding = np.array(embedding).reshape(1, -1)[0]  # make it a 1D vector for the custom function
+            keys = [np.array(k) for k in self.db.keys()]
+
+            # Compute cosine similarities for each stored key
+            similarities = np.array([cosine_similarity(key, embedding) for key in keys])
+
+            best_index = np.argmax(similarities)
+            best_score = similarities[best_index]
+
+            if best_score >= threshold:
+                best_match_key = tuple(np.round(keys[best_index], 4))
+                return self.retrieve(best_match_key)
+
             return None
-
-        embedding = np.array(embedding).reshape(1, -1)[0]  # make it a 1D vector for the custom function
-        keys = [np.array(k) for k in self.db.keys()]
-
-        # Compute cosine similarities for each stored key
-        similarities = np.array([cosine_similarity(key, embedding) for key in keys])
-
-        best_index = np.argmax(similarities)
-        best_score = similarities[best_index]
-
-        if best_score >= threshold:
-            best_match_key = tuple(np.round(keys[best_index], 4))
-            return self.retrieve(best_match_key)
-
-        return None
 
 
 def cosine_similarity(embedding1, embedding2):
