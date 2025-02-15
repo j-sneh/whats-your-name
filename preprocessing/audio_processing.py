@@ -101,7 +101,7 @@ def diarize_audio(audio_path):
 
     return speaker_segments
 
-def process_video(video_path, use_diarization=True):
+def process_video(video_path, use_diarization=False):
     """
     Processes a video file: extracts audio, transcribes speech, and optionally applies speaker diarization.
 
