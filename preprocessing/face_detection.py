@@ -58,20 +58,22 @@ def extract_face_embedding(video_path, num_frames=5, frame_interval=30):
     avg_embedding = np.mean(embeddings, axis=0)
     return avg_embedding, detected_faces
 
-def test_face_detection(video_paths):
+def test_face_detection(video_paths, similarity_threshold=0.5):
     """
-    Tests face detection across multiple videos and reports success rates.
-
+    Tests face detection across multiple videos and compares face embeddings.
+    
     Args:
         video_paths (list): List of video file paths to test.
+        similarity_threshold (float): Cosine similarity threshold for matching faces.
     """
 
-    
     total_videos = len(video_paths)
     total_frames_checked = 0
     total_faces_detected = 0
 
     print("\n===== FACE DETECTION TEST =====")
+
+    embeddings = {}  # Dictionary to store embeddings per video
     
     for idx, video_path in enumerate(video_paths):
         print(f"\n🎥 Testing Video {idx+1}/{total_videos}: {video_path}")
@@ -81,9 +83,11 @@ def test_face_detection(video_paths):
             continue
 
         try:
-            _, detected_faces = extract_face_embedding(video_path)
-            total_faces_detected += detected_faces
-            total_frames_checked += 5  # Default num_frames
+            embedding, detected_faces = extract_face_embedding(video_path)
+            if embedding is not None:
+                embeddings[video_path] = embedding
+                total_faces_detected += detected_faces
+                total_frames_checked += 5  # Default num_frames
 
         except Exception as e:
             print(f"❌ Error processing {video_path}: {e}")
@@ -96,10 +100,37 @@ def test_face_detection(video_paths):
     print(f"😀 Total Faces Detected: {total_faces_detected}")
     print(f"📊 Detection Success Rate: {detection_rate:.2f}%")
 
+    # Compare embeddings between videos
+    print("\n===== COMPARING FACE EMBEDDINGS =====")
+
+    video_keys = list(embeddings.keys())
+    similar_videos = []
+
+    for i in range(len(video_keys)):
+        for j in range(i + 1, len(video_keys)):
+            video1, video2 = video_keys[i], video_keys[j]
+
+            # Compute cosine similarity (1 - cosine distance)
+            similarity = 1 - cosine(embeddings[video1], embeddings[video2])
+
+            print(f"🔍 Cosine Similarity between {video1} and {video2}: {similarity:.4f}")
+
+            if similarity > similarity_threshold:
+                print(f"✅ Faces in {video1} and {video2} are similar!")
+                similar_videos.append((video1, video2))
+
+    if similar_videos:
+        print("\n🎉 Similar Faces Found in the Following Videos:")
+        for pair in similar_videos:
+            print(f"➡ {pair[0]} and {pair[1]}")
+    else:
+        print("\n❌ No matching faces found across videos.")
+
 # Example usage
 if __name__ == "__main__":
     test_videos = [
         "data/test_video1.MOV",
         "data/test_video2.MOV",
+        "data/test_video3.MOV"
     ]
     test_face_detection(test_videos)
